@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>企业文档知识库问答系统</title>
+<style>
+/* ── 全局样式 ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei",
+                 "PingFang SC", "Hiragino Sans GB", sans-serif;
+    background: #f0f2f5;
+    color: #333;
+    min-height: 100vh;
+}
+
+/* ── 顶部导航 ── */
+.header {
+    background: linear-gradient(135deg, #1a56db, #1e40af);
+    color: #fff;
+    padding: 16px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+.header h1 { font-size: 20px; font-weight: 600; }
+.header .badge {
+    background: rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 13px;
+}
+
+/* ── 主布局 ── */
+.container {
+    display: flex;
+    max-width: 1200px;
+    margin: 24px auto;
+    gap: 24px;
+    padding: 0 24px;
+    min-height: calc(100vh - 140px);
+}
+
+/* ── 左侧: 文档管理 ── */
+.sidebar {
+    width: 300px;
+    flex-shrink: 0;
+}
+.card {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.card h3 {
+    font-size: 15px;
+    color: #555;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+/* 上传区域 */
+.upload-area {
+    border: 2px dashed #d0d5dd;
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #888;
+}
+.upload-area:hover, .upload-area.dragover {
+    border-color: #1a56db;
+    background: #f0f4ff;
+    color: #1a56db;
+}
+.upload-area input { display: none; }
+.upload-icon { font-size: 32px; margin-bottom: 8px; }
+.upload-hint { font-size: 12px; color: #aaa; margin-top: 4px; }
+.upload-progress { display: none; margin-top: 10px; }
+
+/* 文档列表 */
+.doc-list { max-height: 240px; overflow-y: auto; }
+.doc-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 6px;
+    margin-bottom: 6px;
+    background: #f8f9fb;
+    font-size: 13px;
+    transition: background 0.15s;
+}
+.doc-item:hover { background: #eef1f6; }
+.doc-item .doc-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-item .doc-info { font-size: 11px; color: #999; margin-right: 8px; }
+.doc-item .doc-icon { margin-right: 8px; }
+.delete-btn {
+    background: none;
+    border: none;
+    color: #d92d20;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    opacity: 0.5;
+    transition: opacity 0.15s;
+}
+.delete-btn:hover { opacity: 1; background: #fef0ef; }
+.empty-hint { text-align: center; color: #bbb; font-size: 13px; padding: 20px 0; }
+
+/* ── 右侧: 问答区 ── */
+.main { flex: 1; }
+.qa-card { margin-bottom: 16px; }
+
+/* 输入区 */
+.question-input {
+    width: 100%;
+    padding: 14px 16px;
+    border: 2px solid #e0e3e8;
+    border-radius: 8px;
+    font-size: 15px;
+    font-family: inherit;
+    resize: none;
+    transition: border-color 0.2s;
+    line-height: 1.5;
+}
+.question-input:focus {
+    outline: none;
+    border-color: #1a56db;
+    box-shadow: 0 0 0 3px rgba(26,86,219,0.1);
+}
+.btn-row { display: flex; gap: 10px; margin-top: 12px; align-items: center; }
+
+.btn {
+    padding: 10px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+.btn-primary {
+    background: #1a56db;
+    color: #fff;
+}
+.btn-primary:hover { background: #1e40af; }
+.btn-primary:disabled { background: #a0b4e0; cursor: not-allowed; }
+
+.btn-secondary {
+    background: #fff;
+    color: #1a56db;
+    border: 1px solid #1a56db;
+}
+.btn-secondary:hover { background: #f0f4ff; }
+
+.rewrite-hint {
+    font-size: 12px;
+    color: #999;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.rewrite-hint .arrow { color: #aaa; }
+
+/* 答案区 */
+.answer-area { display: none; }
+.answer-area.show { display: block; }
+
+.answer-box {
+    background: #fafbfc;
+    border: 1px solid #e8eaed;
+    border-radius: 8px;
+    padding: 20px;
+    line-height: 1.75;
+    font-size: 14px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.answer-box.fallback {
+    background: #fffbeb;
+    border-color: #fde68a;
+    color: #92400e;
+}
+
+.sources-box {
+    margin-top: 16px;
+}
+.sources-box h4 {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 8px;
+}
+.source-item {
+    background: #f8f9fb;
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+}
+.source-item .src-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+.source-item .src-name {
+    color: #1a56db;
+    font-weight: 500;
+}
+.source-item .src-score {
+    color: #22c55e;
+    font-size: 12px;
+}
+.source-item .src-text {
+    color: #666;
+    font-size: 12px;
+    max-height: 60px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 加载动画 */
+.spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid #e0e3e8;
+    border-top-color: #1a56db;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.status-bar {
+    margin-top: 12px;
+    font-size: 13px;
+    color: #999;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+    .container { flex-direction: column; }
+    .sidebar { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<!-- 顶部 -->
+<div class="header">
+    <h1>📚 企业文档知识库问答系统</h1>
+    <span class="badge">RAG · Phase A</span>
+</div>
+
+<!-- 主体 -->
+<div class="container">
+
+    <!-- 左侧: 文档管理 -->
+    <div class="sidebar">
+        <div class="card">
+            <h3>📁 文档管理</h3>
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📤</div>
+                <div>点击上传 或 拖拽文件</div>
+                <div class="upload-hint">支持 PDF · DOCX · TXT</div>
+                <input type="file" id="fileInput" accept=".pdf,.docx,.txt">
+            </div>
+            <div class="upload-progress" id="uploadProgress">
+                <span class="spinner"></span> 正在导入...
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>📋 已导入文档 (<span id="docCount">0</span>)</h3>
+            <div class="doc-list" id="docList">
+                <div class="empty-hint">暂无文档，请先上传</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右侧: 问答区 -->
+    <div class="main">
+        <div class="card qa-card">
+            <h3>💬 向我提问</h3>
+            <textarea class="question-input" id="questionInput"
+                      placeholder="请输入您的问题，如：公司年假有几天？"
+                      rows="2"></textarea>
+            <div class="btn-row">
+                <button class="btn btn-primary" id="askBtn" onclick="askQuestion()">
+                    提问
+                </button>
+                <span class="rewrite-hint" id="rewriteHint" style="display:none">
+                    <span class="arrow">→</span> 检索词: <strong id="rewriteText"></strong>
+                </span>
+            </div>
+            <div class="status-bar" id="statusBar" style="display:none">
+                <span class="spinner"></span> 正在检索和生成答案...
+            </div>
+        </div>
+
+        <div class="card answer-area" id="answerArea">
+            <h3>📝 回答</h3>
+            <div class="answer-box" id="answerBox"></div>
+            <div class="sources-box" id="sourcesBox" style="display:none">
+                <h4>📖 来源参考</h4>
+                <div id="sourcesList"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ── API 基础路径 ──
+const API = '/api';
+
+// ── 页面初始化 ──
+document.addEventListener('DOMContentLoaded', () => {
+    loadDocuments();
+    setupUpload();
+    setupKeyboard();
+});
+
+// ── 键盘快捷键 ──
+function setupKeyboard() {
+    document.getElementById('questionInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            askQuestion();
+        }
+    });
+}
+
+// ── 文件上传 ──
+function setupUpload() {
+    const area = document.getElementById('uploadArea');
+    const input = document.getElementById('fileInput');
+
+    area.addEventListener('click', () => input.click());
+    area.addEventListener('dragover', (e) => { e.preventDefault(); area.classList.add('dragover'); });
+    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+    area.addEventListener('drop', (e) => {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+    input.addEventListener('change', () => handleFiles(input.files));
+}
+
+function handleFiles(files) {
+    for (const file of files) {
+        uploadFile(file);
+    }
+}
+
+async function uploadFile(file) {
+    const progress = document.getElementById('uploadProgress');
+    progress.style.display = 'block';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const resp = await fetch(`${API}/upload`, { method: 'POST', body: formData });
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.detail || '上传失败');
+        }
+        const data = await resp.json();
+        console.log('Uploaded:', data);
+        loadDocuments();
+    } catch (e) {
+        alert('❌ 上传失败: ' + e.message);
+    } finally {
+        progress.style.display = 'none';
+    }
+}
+
+// ── 文档列表 ──
+async function loadDocuments() {
+    try {
+        const resp = await fetch(`${API}/documents`);
+        const docs = await resp.json();
+
+        document.getElementById('docCount').textContent = docs.length;
+
+        const list = document.getElementById('docList');
+        if (docs.length === 0) {
+            list.innerHTML = '<div class="empty-hint">暂无文档，请先上传</div>';
+            return;
+        }
+
+        list.innerHTML = docs.map(d => `
+            <div class="doc-item">
+                <span class="doc-icon">📄</span>
+                <span class="doc-name" title="${d.doc_id}">${d.doc_id}</span>
+                <span class="doc-info">${d.chunk_count} 分片</span>
+                <button class="delete-btn" onclick="deleteDoc('${d.doc_id}')" title="删除">✕</button>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error('加载文档列表失败:', e);
+    }
+}
+
+async function deleteDoc(docId) {
+    if (!confirm('确定删除此文档吗？')) return;
+
+    try {
+        const resp = await fetch(`${API}/documents/${docId}`, { method: 'DELETE' });
+        if (!resp.ok) throw new Error('删除失败');
+        loadDocuments();
+
+        // 清除当前答案（因为数据变了）
+        document.getElementById('answerArea').classList.remove('show');
+    } catch (e) {
+        alert('❌ 删除失败: ' + e.message);
+    }
+}
+
+// ── 提问 ──
+async function askQuestion() {
+    const input = document.getElementById('questionInput');
+    const question = input.value.trim();
+
+    if (!question) {
+        input.focus();
+        return;
+    }
+
+    // 显示加载状态
+    const askBtn = document.getElementById('askBtn');
+    const statusBar = document.getElementById('statusBar');
+    const rewriteHint = document.getElementById('rewriteHint');
+    const answerArea = document.getElementById('answerArea');
+
+    askBtn.disabled = true;
+    statusBar.style.display = 'flex';
+    rewriteHint.style.display = 'none';
+    answerArea.classList.remove('show');
+
+    try {
+        const resp = await fetch(`${API}/ask`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ question }),
+        });
+
+        if (!resp.ok) {
+            const err = await resp.json();
+            throw new Error(err.detail || '请求失败');
+        }
+
+        const data = await resp.json();
+
+        // 显示改写结果
+        if (data.rewritten_query && data.rewritten_query !== question) {
+            document.getElementById('rewriteText').textContent = data.rewritten_query;
+            rewriteHint.style.display = 'flex';
+        }
+
+        // 显示答案
+        const answerBox = document.getElementById('answerBox');
+        answerBox.textContent = data.answer;
+
+        if (data.used_fallback) {
+            answerBox.classList.add('fallback');
+        } else {
+            answerBox.classList.remove('fallback');
+        }
+
+        // 显示来源
+        const sourcesBox = document.getElementById('sourcesBox');
+        const sourcesList = document.getElementById('sourcesList');
+
+        if (data.sources && data.sources.length > 0) {
+            sourcesBox.style.display = 'block';
+            sourcesList.innerHTML = data.sources.map(s => `
+                <div class="source-item">
+                    <div class="src-header">
+                        <span class="src-name">📄 ${s.filename}</span>
+                        <span class="src-score">相关度: ${(s.score * 100).toFixed(0)}%</span>
+                    </div>
+                    <div class="src-text">${escapeHtml(s.content).substring(0, 150)}...</div>
+                </div>
+            `).join('');
+        } else {
+            sourcesBox.style.display = 'none';
+        }
+
+        answerArea.classList.add('show');
+
+    } catch (e) {
+        alert('❌ 请求失败: ' + e.message);
+    } finally {
+        askBtn.disabled = false;
+        statusBar.style.display = 'none';
+    }
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+</script>
+</body>
+</html>
